@@ -1,9 +1,21 @@
 {
   "name": "@splitflow/cli",
   "version": "1.0.0",
-  "description": "Splitflow cli",
+  "description": "SplitFlow cli",
+  "author": "team@splitflow.io",
+	"homepage": "https://github.com/splitflow/cli#readme",
+	"bugs": {
+		"url": "https://github.com/splitflow/cli/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/splitflow/cli.git"
+	},
   "type": "module",
   "bin": "dist/cli.cjs",
+  "files": [
+    "dist/**.cjs"
+  ],
   "scripts": {
     "build": "tsup src/cli.ts"
   },
