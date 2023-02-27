@@ -1,23 +1,23 @@
 {
   "name": "@splitflow/cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "SplitFlow cli",
   "author": "team@splitflow.io",
-	"homepage": "https://github.com/splitflow/cli#readme",
-	"bugs": {
-		"url": "https://github.com/splitflow/cli/issues"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/splitflow/cli.git"
-	},
+  "homepage": "https://github.com/splitflow/cli#readme",
+  "bugs": {
+    "url": "https://github.com/splitflow/cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/splitflow/cli.git"
+  },
   "type": "module",
-  "bin": "dist/cli.cjs",
+  "bin": "dist/index.cjs",
   "files": [
     "dist/**.cjs"
   ],
   "scripts": {
-    "build": "tsup src/cli.ts"
+    "build": "tsup src/cli/index.ts"
   },
   "devDependencies": {
     "@types/node": "^18.11.18",
@@ -26,6 +26,7 @@
     "typescript": "^4.9.3"
   },
   "dependencies": {
+    "core": "npm:@splitflow/core@^1.0.1",
     "yargs": "^17.6.2"
   }
 }
