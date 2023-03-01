@@ -3,5 +3,10 @@
         "padding": {
             "top": 10
         }
+    },
+    "component:hover-root": {
+        "padding": {
+            "top": 10
+        }
     }
 }

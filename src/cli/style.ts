@@ -1,5 +1,5 @@
 import { DefinitionNode, RootNode } from 'core/ast'
-import { sort } from 'core/utils/object'
+import { astToStyle } from 'core/style'
 import { readdir, readFile, writeFile } from 'fs/promises'
 import path from 'path'
 
@@ -17,7 +17,7 @@ export interface StyleOptions {
 export default async function style(options: StyleOptions) {
     const [ast, mapping] = await Promise.all([getAST(options), scanSFFiles()])
 
-    for (const [componentName, styleDef] of toSplitflowStyleDefs(ast)) {
+    for (const [componentName, styleDef] of astToStyle(ast)) {
         const filePath = mapping.get(componentName)
         if (filePath) {
             writeFile(filePath, sfFileTemplate(componentName, styleDef))
@@ -51,30 +51,6 @@ async function getASTFromServer(projectId: string): Promise<RootNode> {
 async function getASTFromFile(astPath: string): Promise<RootNode> {
     const text = await readFile(path.join(process.cwd(), astPath), { encoding: 'utf8' })
     return JSON.parse(text)
-}
-
-function* toSplitflowStyleDefs(ast: RootNode): Generator<[string, SplitflowStyleDef]> {
-    let styleDef: SplitflowStyleDef | null = null
-    let styleComponentName: string | null = null
-
-    for (const [key, definition] of Object.entries(sort(ast))) {
-        const [componentName, elementName] = key.split('-')
-
-        if (styleDef && styleComponentName != componentName) {
-            yield [styleComponentName!, styleDef]
-
-            styleDef = null
-            styleComponentName = null
-        }
-
-        styleComponentName = componentName
-        styleDef = styleDef ?? {}
-        styleDef[elementName] = definition
-    }
-
-    if (styleDef) {
-        yield [styleComponentName!, styleDef]
-    }
 }
 
 async function scanSFFiles() {
