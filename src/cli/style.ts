@@ -1,5 +1,6 @@
 import { DefinitionNode, RootNode } from 'core/ast'
 import { astToStyle } from 'core/style'
+import { merge } from 'core/utils/object'
 import { readdir, readFile, writeFile } from 'fs/promises'
 import path from 'path'
 
@@ -17,14 +18,30 @@ export interface StyleOptions {
 export default async function style(options: StyleOptions) {
     const [ast, mapping] = await Promise.all([getAST(options), scanSFFiles()])
 
+    const promises = []
     for (const [componentName, styleDef] of astToStyle(ast)) {
         const filePath = mapping.get(componentName)
         if (filePath) {
-            writeFile(filePath, sfFileTemplate(componentName, styleDef))
+            promises.push(mergeSFFile(filePath, componentName, styleDef))
         } else {
             console.warn(`File ${componentName}.sf.(ts|js) is missing`)
         }
     }
+
+    await Promise.all(promises)
+}
+
+async function mergeSFFile(filePath: string, componentName: string, styleDef: SplitflowStyleDef) {
+    const oldStyleDef = parseSFFileTemplate(await readFile(filePath, { encoding: 'utf8' }))
+    await writeFile(filePath, sfFileTemplate(componentName, merge(oldStyleDef, styleDef)))
+}
+
+const STYLE_DEF_REGEX = /createStyle\([^,]+,([^)]+)\)/
+
+function parseSFFileTemplate(fileContent: string): SplitflowStyleDef {
+    const match = fileContent.match(STYLE_DEF_REGEX)
+    if (match) return JSON.parse(match[1])
+    return {}
 }
 
 function sfFileTemplate(componentName: string, styleDef: SplitflowStyleDef) {

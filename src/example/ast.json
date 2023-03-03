@@ -1,7 +1,7 @@
 {
     "component-root:hover": {
         "padding": {
-            "top": 10
+            "top": 5
         }
     },
     "component:hover-root": {
