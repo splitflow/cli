@@ -1,6 +1,6 @@
 {
   "name": "@splitflow/cli",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "SplitFlow cli",
   "author": "team@splitflow.io",
   "homepage": "https://github.com/splitflow/cli#readme",
@@ -26,7 +26,7 @@
     "typescript": "^4.9.3"
   },
   "dependencies": {
-    "core": "npm:@splitflow/core@^1.1.0",
+    "core": "npm:@splitflow/core@^1.2.1",
     "yargs": "^17.6.2"
   }
 }

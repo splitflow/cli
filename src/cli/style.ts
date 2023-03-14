@@ -1,14 +1,10 @@
-import { DefinitionNode, RootNode } from 'core/ast'
-import { astToStyle } from 'core/style'
+import { RootNode } from 'core/ast'
+import { astToStyle, SplitflowStyleDef } from 'core/style'
 import { merge } from 'core/utils/object'
 import { readdir, readFile, writeFile } from 'fs/promises'
 import path from 'path'
 
 const AST_ENDPOINT = 'https://main.splitflow.workers.dev/ast'
-
-interface SplitflowStyleDef {
-    [definitionName: string]: DefinitionNode
-}
 
 export interface StyleOptions {
     projectId?: string
