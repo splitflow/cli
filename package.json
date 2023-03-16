@@ -26,7 +26,7 @@
     "typescript": "^4.9.3"
   },
   "dependencies": {
-    "core": "npm:@splitflow/core@^1.2.1",
+    "@splitflow/core": "^1.2.1",
     "yargs": "^17.6.2"
   }
 }

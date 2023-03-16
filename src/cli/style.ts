@@ -1,6 +1,6 @@
-import { RootNode } from 'core/ast'
-import { astToStyle, SplitflowStyleDef } from 'core/style'
-import { merge } from 'core/utils/object'
+import { RootNode } from '@splitflow/core/ast'
+import { astToStyle, SplitflowStyleDef } from '@splitflow/core/style'
+import { merge } from '@splitflow/core/utils/object'
 import { readdir, readFile, writeFile } from 'fs/promises'
 import path from 'path'
 
