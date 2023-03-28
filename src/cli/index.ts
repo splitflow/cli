@@ -2,6 +2,7 @@
 import yargs from 'yargs/yargs'
 import css from './css'
 import style from './style'
+import theme from './theme'
 
 yargs(process.argv.slice(2))
     .config('config')
@@ -38,5 +39,26 @@ yargs(process.argv.slice(2))
                 }),
         (argv) => {
             style(argv)
+        }
+    )
+    .command(
+        'theme [theme]',
+        'Generate SplitFlow themes',
+        (yargs) =>
+            yargs
+                .positional('theme', {
+                    type: 'string',
+                    describe: 'Path to Theme file'
+                })
+                .check((argv) => {
+                    if (!argv.theme && !argv.projectId) {
+                        throw new Error(
+                            'If not Theme file path is specified, the projectId option must be set'
+                        )
+                    }
+                    return true
+                }),
+        (argv) => {
+            theme(argv)
         }
     ).argv

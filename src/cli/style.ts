@@ -1,8 +1,10 @@
 import { RootNode } from '@splitflow/core/ast'
 import { astToStyle, SplitflowStyleDef } from '@splitflow/core/style'
 import { merge } from '@splitflow/core/utils/object'
-import { readdir, readFile, writeFile } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
 import path from 'path'
+import { FileScanner } from './utils/files'
+import { format } from './utils/json'
 
 const AST_ENDPOINT = 'https://main.splitflow.workers.dev/ast'
 
@@ -12,7 +14,11 @@ export interface StyleOptions {
 }
 
 export default async function style(options: StyleOptions) {
-    const [ast, mapping] = await Promise.all([getAST(options), scanSFFiles()])
+    const fileScanner = new FileScanner({
+        filter: (fileName) => fileName.match(/^([^\.]*)\.sf\.(ts|js)$/)?.[1]
+    })
+
+    const [ast, mapping] = await Promise.all([getAST(options), fileScanner.scan()])
 
     const promises = []
     for (const [componentName, styleDef] of astToStyle(ast)) {
@@ -36,7 +42,7 @@ const STYLE_DEF_REGEX = /createStyle\([^,]+,([^)]+)\)/
 
 function parseSFFileTemplate(fileContent: string): SplitflowStyleDef {
     const match = fileContent.match(STYLE_DEF_REGEX)
-    if (match) return JSON.parse(match[1])
+    if (match) return JSON.parse(format(match[1]))
     return {}
 }
 
@@ -64,39 +70,4 @@ async function getASTFromServer(projectId: string): Promise<RootNode> {
 async function getASTFromFile(astPath: string): Promise<RootNode> {
     const text = await readFile(path.join(process.cwd(), astPath), { encoding: 'utf8' })
     return JSON.parse(text)
-}
-
-async function scanSFFiles() {
-    const result = new Map<string, string>()
-    await scan(
-        result,
-        path.join(process.cwd()),
-        (dirName) => dirName !== 'node_modules',
-        (fileName) => fileName.match(/^([^\.]*)\.sf\.(ts|js)$/)?.[1]
-    )
-    return result
-}
-
-async function scan(
-    result: Map<string, string>,
-    dirPath: string,
-    include: (dirName: string) => boolean,
-    filter: (fileName: string) => string | undefined
-) {
-    const entries = await readdir(dirPath, { withFileTypes: true })
-
-    const promises: Promise<void>[] = []
-    for (const entry of entries) {
-        if (entry.isDirectory() && include(entry.name)) {
-            promises.push(scan(result, path.join(dirPath, entry.name), include, filter))
-        } else if (entry.isFile()) {
-            const key = filter(entry.name)
-
-            if (key) {
-                result.set(key, path.join(dirPath, entry.name))
-            }
-        }
-    }
-
-    await Promise.all(promises)
 }
