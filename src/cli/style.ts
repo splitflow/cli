@@ -1,6 +1,6 @@
 import { RootNode } from '@splitflow/core/ast'
 import { astToStyle, SplitflowStyleDef } from '@splitflow/core/style'
-import { merge, mergeObject } from '@splitflow/core/utils/object'
+import { mergeObject } from '@splitflow/core/utils/object'
 import { readFile, writeFile } from 'fs/promises'
 import path from 'path'
 import { FileScanner } from './utils/files'

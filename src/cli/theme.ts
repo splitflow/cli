@@ -1,5 +1,5 @@
 import { RootNode, ThemeDataNode } from '@splitflow/core/theme'
-import { merge, mergeObject } from '@splitflow/core/utils/object'
+import { mergeObject } from '@splitflow/core/utils/object'
 import { readFile, writeFile } from 'fs/promises'
 import path from 'path'
 import { FileScanner } from './utils/files'
