@@ -1,5 +1,5 @@
 import { RootNode, ThemeDataNode } from '@splitflow/core/theme'
-import { merge } from '@splitflow/core/utils/object'
+import { merge, mergeObject } from '@splitflow/core/utils/object'
 import { readFile, writeFile } from 'fs/promises'
 import path from 'path'
 import { FileScanner } from './utils/files'
@@ -34,7 +34,8 @@ export default async function theme(options: ThemeOptions) {
 
 async function mergeSFThemeFile(filePath: string, themeName: string, themeData: ThemeDataNode) {
     const oldThemeData = parseSFThemeFileTemplate(await readFile(filePath, { encoding: 'utf8' }))
-    await writeFile(filePath, sfThemeFileTemplate(themeName, merge(oldThemeData, themeData)))
+    const newThemeData = mergeObject(oldThemeData, themeData, { deleteNullProps: true })
+    await writeFile(filePath, sfThemeFileTemplate(themeName, newThemeData))
 }
 
 const THEME_DATA_REGEX = /createTheme\([^,]+,([^)]+)\)/

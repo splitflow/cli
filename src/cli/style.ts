@@ -1,6 +1,6 @@
 import { RootNode } from '@splitflow/core/ast'
 import { astToStyle, SplitflowStyleDef } from '@splitflow/core/style'
-import { merge } from '@splitflow/core/utils/object'
+import { merge, mergeObject } from '@splitflow/core/utils/object'
 import { readFile, writeFile } from 'fs/promises'
 import path from 'path'
 import { FileScanner } from './utils/files'
@@ -35,7 +35,8 @@ export default async function style(options: StyleOptions) {
 
 async function mergeSFFile(filePath: string, componentName: string, styleDef: SplitflowStyleDef) {
     const oldStyleDef = parseSFFileTemplate(await readFile(filePath, { encoding: 'utf8' }))
-    await writeFile(filePath, sfFileTemplate(componentName, merge(oldStyleDef, styleDef)))
+    const newStyleDef = mergeObject(oldStyleDef, styleDef, { deleteNullProps: true })
+    await writeFile(filePath, sfFileTemplate(componentName, newStyleDef))
 }
 
 const STYLE_DEF_REGEX = /createStyle\([^,]+,([^)]+)\)/
