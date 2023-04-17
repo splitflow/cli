@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import yargs from 'yargs/yargs'
 import css from './css'
+import { CLIError } from './error'
 import style from './style'
 import theme from './theme'
 
@@ -16,9 +17,7 @@ yargs(process.argv.slice(2))
         'css',
         'Generate the CSS file for your project',
         () => {},
-        (argv) => {
-            css(argv.projectId as any)
-        }
+        (argv) => css(argv.projectId as any)
     )
     .command(
         'style [ast]',
@@ -29,17 +28,20 @@ yargs(process.argv.slice(2))
                     type: 'string',
                     describe: 'Path to AST file'
                 })
+                .option('clear', {
+                    alias: 'c',
+                    type: 'boolean',
+                    description: 'Clear AST definition from server'
+                })
                 .check((argv) => {
                     if (!argv.ast && !argv.projectId) {
                         throw new Error(
-                            'If not AST file path is specified, the projectId option must be set'
+                            'If no AST file path is specified, the projectId option must be set'
                         )
                     }
                     return true
                 }),
-        (argv) => {
-            style(argv)
-        }
+        (argv) => style(argv)
     )
     .command(
         'theme [theme]',
@@ -50,15 +52,28 @@ yargs(process.argv.slice(2))
                     type: 'string',
                     describe: 'Path to Theme file'
                 })
+                .option('clear', {
+                    alias: 'c',
+                    type: 'boolean',
+                    description: 'Clear Theme data from server'
+                })
                 .check((argv) => {
                     if (!argv.theme && !argv.projectId) {
                         throw new Error(
-                            'If not Theme file path is specified, the projectId option must be set'
+                            'If no Theme file path is specified, the projectId option must be set'
                         )
                     }
                     return true
                 }),
-        (argv) => {
-            theme(argv)
+        (argv) => theme(argv)
+    )
+    .fail((_, error, yargs) => {
+        console.error(yargs.help())
+        console.error('')
+        if (error instanceof CLIError) {
+            console.error(`${error.snack}: ${error.message}`)
+        } else {
+            console.error(error.stack)
         }
-    ).argv
+        process.exit(1)
+    }).argv
