@@ -1,6 +1,5 @@
-import { RootNode } from '@splitflow/core/ast'
-import { astToStyle, SplitflowStyleDef } from '@splitflow/core/style'
-import { mergeObject } from '@splitflow/core/utils/object'
+import { StyleNode, SplitflowStyleDef, styleToDef } from '@splitflow/lib/style'
+import { merge } from '@splitflow/core/utils'
 import { readFile, writeFile } from 'fs/promises'
 import crypto from 'crypto'
 import path from 'path'
@@ -28,7 +27,7 @@ export default async function style(options: StyleOptions) {
 
     await Promise.all(
         (function* () {
-            for (const [componentName, styleDef] of astToStyle(ast)) {
+            for (const [componentName, styleDef] of styleToDef(ast)) {
                 const filePath = mapping.get(componentName)
                 if (filePath) {
                     yield mergeSFFile(filePath, componentName, styleDef)
@@ -46,7 +45,7 @@ export default async function style(options: StyleOptions) {
 
 async function mergeSFFile(filePath: string, componentName: string, styleDef: SplitflowStyleDef) {
     const oldStyleDef = parseSFFileTemplate(await readFile(filePath, { encoding: 'utf8' }))
-    const newStyleDef = mergeObject(oldStyleDef, styleDef, { deleteNullProps: true })
+    const newStyleDef = merge(oldStyleDef, styleDef, { deleteNullProps: true })
     await writeFile(filePath, sfFileTemplate(componentName, newStyleDef))
 }
 
@@ -60,13 +59,13 @@ function parseSFFileTemplate(fileContent: string): SplitflowStyleDef {
 
 function sfFileTemplate(componentName: string, styleDef: SplitflowStyleDef) {
     return `
-import { createStyle } from '@splitflow/designer/style'
+import { createStyle } from '@splitflow/designer'
 
 export const style = createStyle('${componentName}', ${JSON.stringify(styleDef, null, 4)})
 `
 }
 
-async function getASTFromServer(projectId: string): Promise<RootNode> {
+async function getASTFromServer(projectId: string): Promise<StyleNode> {
     const response = await fetch(path.join(AST_ENDPOINT, projectId))
     if (response.status === 200) {
         return response.json()
@@ -77,12 +76,12 @@ async function getASTFromServer(projectId: string): Promise<RootNode> {
     throw new Error(response.statusText)
 }
 
-async function getASTFromFile(astPath: string): Promise<RootNode> {
+async function getASTFromFile(astPath: string): Promise<StyleNode> {
     const text = await readFile(path.join(process.cwd(), astPath), { encoding: 'utf8' })
     return JSON.parse(text)
 }
 
-async function saveASTToFile(ast: RootNode): Promise<string> {
+async function saveASTToFile(ast: StyleNode): Promise<string> {
     const data = JSON.stringify(ast)
     const checksum = crypto.createHash('sha256').update(data).digest('hex')
 

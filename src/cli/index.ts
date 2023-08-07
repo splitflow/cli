@@ -4,6 +4,7 @@ import css from './css'
 import { CLIError } from './error'
 import style from './style'
 import theme from './theme'
+import config from './config'
 
 yargs(process.argv.slice(2))
     .config('config')
@@ -20,23 +21,23 @@ yargs(process.argv.slice(2))
         (argv) => css(argv.projectId as any)
     )
     .command(
-        'style [ast]',
+        'style [style]',
         'Generate SplitFlow style definitions',
         (yargs) =>
             yargs
                 .positional('ast', {
                     type: 'string',
-                    describe: 'Path to AST file'
+                    describe: 'Path to style definitions file'
                 })
                 .option('clear', {
                     alias: 'c',
                     type: 'boolean',
-                    description: 'Clear AST definition from server'
+                    description: 'Clear style definitions from server'
                 })
                 .check((argv) => {
                     if (!argv.ast && !argv.projectId) {
                         throw new Error(
-                            'If no AST file path is specified, the projectId option must be set'
+                            'If no style file path is specified, the projectId option must be set'
                         )
                     }
                     return true
@@ -50,22 +51,46 @@ yargs(process.argv.slice(2))
             yargs
                 .positional('theme', {
                     type: 'string',
-                    describe: 'Path to Theme file'
+                    describe: 'Path to theme file'
                 })
                 .option('clear', {
                     alias: 'c',
                     type: 'boolean',
-                    description: 'Clear Theme data from server'
+                    description: 'Clear theme data from server'
                 })
                 .check((argv) => {
                     if (!argv.theme && !argv.projectId) {
                         throw new Error(
-                            'If no Theme file path is specified, the projectId option must be set'
+                            'If no theme file path is specified, the projectId option must be set'
                         )
                     }
                     return true
                 }),
         (argv) => theme(argv)
+    )
+    .command(
+        'configuration [configuration]',
+        'Generate SplitFlow configuration definitions',
+        (yargs) =>
+            yargs
+                .positional('configuration', {
+                    type: 'string',
+                    describe: 'Path to configuration definitions file'
+                })
+                .option('clear', {
+                    alias: 'c',
+                    type: 'boolean',
+                    description: 'Clear configuration definitions from server'
+                })
+                .check((argv) => {
+                    if (!argv.configuration && !argv.projectId) {
+                        throw new Error(
+                            'If no configuration file path is specified, the projectId option must be set'
+                        )
+                    }
+                    return true
+                }),
+        (argv) => config(argv)
     )
     .fail((_, error, yargs) => {
         console.error(yargs.help())

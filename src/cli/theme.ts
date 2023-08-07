@@ -1,5 +1,5 @@
-import { RootNode, ThemeDataNode } from '@splitflow/core/theme'
-import { mergeObject } from '@splitflow/core/utils/object'
+import { ThemeNode, ThemeDataNode } from '@splitflow/lib/style'
+import { merge } from '@splitflow/core/utils'
 import { readFile, writeFile } from 'fs/promises'
 import crypto from 'crypto'
 import path from 'path'
@@ -45,7 +45,7 @@ export default async function theme(options: ThemeOptions) {
 
 async function mergeSFThemeFile(filePath: string, themeName: string, themeData: ThemeDataNode) {
     const oldThemeData = parseSFThemeFileTemplate(await readFile(filePath, { encoding: 'utf8' }))
-    const newThemeData = mergeObject(oldThemeData, themeData, { deleteNullProps: true })
+    const newThemeData = merge(oldThemeData, themeData, { deleteNullProps: true })
     await writeFile(filePath, sfThemeFileTemplate(themeName, newThemeData))
 }
 
@@ -59,13 +59,13 @@ function parseSFThemeFileTemplate(fileContent: string): ThemeDataNode {
 
 function sfThemeFileTemplate(themeName: string, themeData: ThemeDataNode) {
     return `
-import { createTheme } from '@splitflow/designer/theme'
+import { createTheme } from '@splitflow/designer'
 
 export const theme = createTheme('${themeName}', ${JSON.stringify(themeData, null, 4)})
 `
 }
 
-async function getThemeFromServer(projectId: string): Promise<RootNode> {
+async function getThemeFromServer(projectId: string): Promise<ThemeNode> {
     const response = await fetch(path.join(THEME_ENDPOINT, projectId))
     if (response.status === 200) {
         return response.json()
@@ -76,12 +76,12 @@ async function getThemeFromServer(projectId: string): Promise<RootNode> {
     throw new Error(response.statusText)
 }
 
-async function getThemeFromFile(themePath: string): Promise<RootNode> {
+async function getThemeFromFile(themePath: string): Promise<ThemeNode> {
     const text = await readFile(path.join(process.cwd(), themePath), { encoding: 'utf8' })
     return JSON.parse(text)
 }
 
-async function saveThemeToFile(theme: RootNode) {
+async function saveThemeToFile(theme: ThemeNode) {
     const data = JSON.stringify(theme)
     const checksum = crypto.createHash('sha256').update(data).digest('hex')
 
