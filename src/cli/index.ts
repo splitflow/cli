@@ -9,16 +9,22 @@ import config from './config'
 yargs(process.argv.slice(2))
     .config('config')
     .default('config', 'splitflow.config.json')
-    .option('projectId', {
+    .option('appId', {
         alias: 'p',
         type: 'string',
-        description: 'SplitFlow project ID'
+        description: 'SplitFlow application ID'
+    })
+    .option('framework', {
+        alias: 'f',
+        type: 'string',
+        description: 'Targeted web Framework',
+        choices: ['svelte']
     })
     .command(
         'css',
-        'Generate the CSS file for your project',
+        'Generate the CSS file for your application',
         () => {},
-        (argv) => css(argv.projectId as any)
+        (argv) => css(argv.appId as any)
     )
     .command(
         'style [style]',
@@ -35,9 +41,9 @@ yargs(process.argv.slice(2))
                     description: 'Clear style definitions from server'
                 })
                 .check((argv) => {
-                    if (!argv.ast && !argv.projectId) {
+                    if (!argv.ast && !argv.appId) {
                         throw new Error(
-                            'If no style file path is specified, the projectId option must be set'
+                            'If no style file path is specified, the appId option must be set'
                         )
                     }
                     return true
@@ -59,9 +65,9 @@ yargs(process.argv.slice(2))
                     description: 'Clear theme data from server'
                 })
                 .check((argv) => {
-                    if (!argv.theme && !argv.projectId) {
+                    if (!argv.theme && !argv.appId) {
                         throw new Error(
-                            'If no theme file path is specified, the projectId option must be set'
+                            'If no theme file path is specified, the appId option must be set'
                         )
                     }
                     return true
@@ -83,9 +89,9 @@ yargs(process.argv.slice(2))
                     description: 'Clear configuration definitions from server'
                 })
                 .check((argv) => {
-                    if (!argv.configuration && !argv.projectId) {
+                    if (!argv.configuration && !argv.appId) {
                         throw new Error(
-                            'If no configuration file path is specified, the projectId option must be set'
+                            'If no configuration file path is specified, the appId option must be set'
                         )
                     }
                     return true

@@ -14,14 +14,15 @@ const FILE_SCANNER = new FileScanner({
 })
 
 export interface StyleOptions {
-    projectId?: string
+    appId?: string
+    framework?: string
     ast?: string
     clear?: boolean
 }
 
 export default async function style(options: StyleOptions) {
     const [ast, mapping] = await Promise.all([
-        options.ast ? getASTFromFile(options.ast) : getASTFromServer(options.projectId!),
+        options.ast ? getASTFromFile(options.ast) : getASTFromServer(options.appId!),
         FILE_SCANNER.scan()
     ])
 
@@ -30,7 +31,12 @@ export default async function style(options: StyleOptions) {
             for (const [componentName, styleDef] of styleToDef(ast)) {
                 const filePath = mapping.get(componentName)
                 if (filePath) {
-                    yield mergeSFFile(filePath, componentName, styleDef)
+                    yield mergeSFFile(
+                        filePath,
+                        componentName,
+                        styleDef,
+                        template(options.framework)
+                    )
                 } else {
                     console.warn(`File ${componentName}.sf.(ts|js) is missing`)
                 }
@@ -39,14 +45,19 @@ export default async function style(options: StyleOptions) {
     )
 
     if (options.clear && !options.ast) {
-        await deleteASTFromServer(options.projectId!, await saveASTToFile(ast))
+        await deleteASTFromServer(options.appId!, await saveASTToFile(ast))
     }
 }
 
-async function mergeSFFile(filePath: string, componentName: string, styleDef: SplitflowStyleDef) {
+async function mergeSFFile(
+    filePath: string,
+    componentName: string,
+    styleDef: SplitflowStyleDef,
+    template: (componentName: string, styleDef: SplitflowStyleDef) => string
+) {
     const oldStyleDef = parseSFFileTemplate(await readFile(filePath, { encoding: 'utf8' }))
     const newStyleDef = merge(oldStyleDef, styleDef, { deleteNullProps: true })
-    await writeFile(filePath, sfFileTemplate(componentName, newStyleDef))
+    await writeFile(filePath, template(componentName, newStyleDef))
 }
 
 const STYLE_DEF_REGEX = /createStyle\([^,]+,([^)]+)\)/
@@ -57,7 +68,16 @@ function parseSFFileTemplate(fileContent: string): SplitflowStyleDef {
     return {}
 }
 
-function sfFileTemplate(componentName: string, styleDef: SplitflowStyleDef) {
+function template(framework: string) {
+    switch (framework) {
+        case 'svelte':
+            return sfSvelteFileTemplate
+        default:
+            return sfJavascriptFileTemplate
+    }
+}
+
+function sfJavascriptFileTemplate(componentName: string, styleDef: SplitflowStyleDef) {
     return `
 import { createStyle } from '@splitflow/designer'
 
@@ -65,8 +85,21 @@ export const style = createStyle('${componentName}', ${JSON.stringify(styleDef, 
 `
 }
 
-async function getASTFromServer(projectId: string): Promise<StyleNode> {
-    const response = await fetch(path.join(AST_ENDPOINT, projectId))
+function sfSvelteFileTemplate(componentName: string, styleDef: SplitflowStyleDef) {
+    return `
+import { createStyle as _createStyle } from '@splitflow/designer'
+import { createStyle as __createStyle } from '@splitflow/designer/svelte'
+
+export function createStyle() {
+    return __createStyle(style)
+}
+
+export const style = _createStyle('${componentName}', ${JSON.stringify(styleDef, null, 4)})
+`
+}
+
+async function getASTFromServer(appId: string): Promise<StyleNode> {
+    const response = await fetch(path.join(AST_ENDPOINT, appId))
     if (response.status === 200) {
         return response.json()
     }
@@ -89,8 +122,8 @@ async function saveASTToFile(ast: StyleNode): Promise<string> {
     return checksum
 }
 
-async function deleteASTFromServer(projectId: string, checksum: string): Promise<void> {
-    const response = await fetch(path.join(AST_ENDPOINT, projectId), {
+async function deleteASTFromServer(appId: string, checksum: string): Promise<void> {
+    const response = await fetch(path.join(AST_ENDPOINT, appId), {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json'

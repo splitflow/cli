@@ -28,8 +28,8 @@
     "vitest": "^0.29.7"
   },
   "dependencies": {
-    "@splitflow/core": "^2.0.0",
-    "@splitflow/lib": "^1.0.0",
+    "@splitflow/core": "file:../core",
+    "@splitflow/lib": "file:../lib",
     "yargs": "^17.6.2"
   }
 }
