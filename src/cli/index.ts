@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import yargs from 'yargs/yargs'
-import css from './css'
 import { CLIError } from './error'
 import style from './style'
 import theme from './theme'
@@ -9,8 +8,13 @@ import config from './config'
 yargs(process.argv.slice(2))
     .config('config')
     .default('config', 'splitflow.config.json')
-    .option('appId', {
+    .option('projectId', {
         alias: 'p',
+        type: 'string',
+        description: 'SplitFlow project ID'
+    })
+    .option('appId', {
+        alias: 'a',
         type: 'string',
         description: 'SplitFlow application ID'
     })
@@ -20,12 +24,6 @@ yargs(process.argv.slice(2))
         description: 'Targeted web Framework',
         choices: ['svelte']
     })
-    .command(
-        'css',
-        'Generate the CSS file for your application',
-        () => {},
-        (argv) => css(argv.appId as any)
-    )
     .command(
         'style [style]',
         'Generate SplitFlow style definitions',
@@ -65,9 +63,9 @@ yargs(process.argv.slice(2))
                     description: 'Clear theme data from server'
                 })
                 .check((argv) => {
-                    if (!argv.theme && !argv.appId) {
+                    if (!argv.theme && !argv.projectId) {
                         throw new Error(
-                            'If no theme file path is specified, the appId option must be set'
+                            'If no theme file path is specified, the projectId option must be set'
                         )
                     }
                     return true

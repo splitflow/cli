@@ -1,3 +1,10 @@
+import { actionRequest, getResult } from '@splitflow/lib'
+import {
+    GetNodeAction,
+    GetNodeResult,
+    ResetNodeAction,
+    ResetNodeResult
+} from '@splitflow/lib/design'
 import { StyleNode, SplitflowStyleDef, styleToDef } from '@splitflow/lib/style'
 import { merge } from '@splitflow/core/utils'
 import { readFile, writeFile } from 'fs/promises'
@@ -6,8 +13,6 @@ import path from 'path'
 import { FileScanner } from './utils/files'
 import { format } from './utils/json'
 import { CLIError } from './error'
-
-const AST_ENDPOINT = 'https://main.splitflow.workers.dev/ast'
 
 const FILE_SCANNER = new FileScanner({
     filter: (fileName) => fileName.match(/^([^\.]*)\.sf\.(ts|js)$/)?.[1]
@@ -98,15 +103,13 @@ export const style = _createStyle('${componentName}', ${JSON.stringify(styleDef,
 `
 }
 
-async function getASTFromServer(appId: string): Promise<StyleNode> {
-    const response = await fetch(path.join(AST_ENDPOINT, appId))
-    if (response.status === 200) {
-        return response.json()
-    }
-    if (response.status === 400) {
-        throw new CLIError('Failed to load AST', (await response.json()).error)
-    }
-    throw new Error(response.statusText)
+async function getASTFromServer(designId: string): Promise<StyleNode> {
+    const action: GetNodeAction = { type: 'get-node', designId, style: true }
+    const response = fetch(actionRequest('design', action))
+    const { node, error } = await getResult<GetNodeResult>(response)
+
+    if (node) return node as StyleNode
+    throw new CLIError('Failed to load AST', error.message)
 }
 
 async function getASTFromFile(astPath: string): Promise<StyleNode> {
@@ -122,18 +125,10 @@ async function saveASTToFile(ast: StyleNode): Promise<string> {
     return checksum
 }
 
-async function deleteASTFromServer(appId: string, checksum: string): Promise<void> {
-    const response = await fetch(path.join(AST_ENDPOINT, appId), {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ checksum })
-    })
+async function deleteASTFromServer(designId: string, styleChecksum: string): Promise<void> {
+    const action: ResetNodeAction = { type: 'reset-node', designId, styleChecksum }
+    const response = fetch(actionRequest('design', action))
+    const { error } = await getResult<ResetNodeResult>(response)
 
-    if (response.status === 200) return
-    if (response.status === 400) {
-        throw new CLIError('Failed to clear AST', (await response.json()).error)
-    }
-    throw new Error(response.statusText)
+    if (error) throw new CLIError('Failed to reset AST', error.message)
 }
