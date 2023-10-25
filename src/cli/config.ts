@@ -1,5 +1,12 @@
-import { ConfigNode, ConfigurationNode, configToDef } from '@splitflow/lib/config'
 import { merge } from '@splitflow/core/utils'
+import { actionRequest, getResult } from '@splitflow/lib'
+import { ConfigNode, ConfigurationNode, configToDef } from '@splitflow/lib/config'
+import {
+    GetNodeAction,
+    GetNodeResult,
+    ResetNodeAction,
+    ResetNodeResult
+} from '@splitflow/lib/design'
 import { readFile, writeFile } from 'fs/promises'
 import crypto from 'crypto'
 import path from 'path'
@@ -7,14 +14,13 @@ import { FileScanner } from './utils/files'
 import { format } from './utils/json'
 import { CLIError } from './error'
 
-const CONFIG_ENDPOINT = 'https://config.splitflow.workers.dev'
-
 const FILE_SCANNER = new FileScanner({
     filter: (fileName) => fileName.match(/^([^\.]*)\.sfc\.(ts|js)$/)?.[1]
 })
 
 export interface ConfigOptions {
-    projectId?: string
+    appId?: string
+    framework?: string
     configuration?: string
     clear?: boolean
 }
@@ -23,7 +29,7 @@ export default async function config(options: ConfigOptions) {
     const [config, mapping] = await Promise.all([
         options.configuration
             ? getConfigFromFile(options.configuration)
-            : getConfigFromServer(options.projectId!),
+            : getConfigFromServer(options.appId!),
         FILE_SCANNER.scan()
     ])
 
@@ -32,7 +38,12 @@ export default async function config(options: ConfigOptions) {
             for (const [componentName, configuration] of configToDef(config)) {
                 const filePath = mapping.get(componentName)
                 if (filePath) {
-                    yield mergeSFConfigurationFile(filePath, componentName, configuration)
+                    yield mergeSFConfigurationFile(
+                        filePath,
+                        componentName,
+                        configuration,
+                        template(options.framework)
+                    )
                 } else {
                     console.warn(`File ${componentName}.sfc.(ts|js) is missing`)
                 }
@@ -41,20 +52,21 @@ export default async function config(options: ConfigOptions) {
     )
 
     if (options.clear && !options.configuration) {
-        await deleteConfigFromServer(options.projectId!, await saveConfigToFile(config))
+        await deleteConfigFromServer(options.appId!, await saveConfigToFile(config))
     }
 }
 
 async function mergeSFConfigurationFile(
     filePath: string,
     componentName: string,
-    configuration: ConfigurationNode
+    configuration: ConfigurationNode,
+    template: (componentName: string, configuration: ConfigurationNode) => string
 ) {
     const oldConfiguration = parseSFConfigFileTemplate(
         await readFile(filePath, { encoding: 'utf8' })
     )
     const newConfiguration = merge(oldConfiguration, configuration, { deleteNullProps: true })
-    await writeFile(filePath, sfConfigFileTemplate(componentName, newConfiguration))
+    await writeFile(filePath, template(componentName, newConfiguration))
 }
 
 const CONFIGURATION_REGEX = /createConfig\([^,]+,([^)]+)\)/
@@ -65,7 +77,16 @@ function parseSFConfigFileTemplate(fileContent: string): ConfigurationNode {
     return {}
 }
 
-function sfConfigFileTemplate(componentName: string, configuration: ConfigurationNode) {
+function template(framework: string) {
+    switch (framework) {
+        case 'svelte':
+            return sfSvelteConfigFileTemplate
+        default:
+            return sfJavascriptConfigFileTemplate
+    }
+}
+
+function sfJavascriptConfigFileTemplate(componentName: string, configuration: ConfigurationNode) {
     return `
 import { createConfig } from '@splitflow/designer'
 
@@ -73,15 +94,26 @@ export const config = createConfig('${componentName}', ${JSON.stringify(configur
 `
 }
 
-async function getConfigFromServer(projectId: string): Promise<ConfigNode> {
-    const response = await fetch(path.join(CONFIG_ENDPOINT, projectId))
-    if (response.status === 200) {
-        return response.json()
-    }
-    if (response.status === 400) {
-        throw new CLIError('Failed to load Config', (await response.json()).error)
-    }
-    throw new Error(response.statusText)
+function sfSvelteConfigFileTemplate(componentName: string, configuration: ConfigurationNode) {
+    return `
+import { createConfig as _createConfig } from '@splitflow/designer'
+import { createConfig as __createConfig } from '@splitflow/designer/svelte'
+
+export function createConfig() {
+    return __createConfig(config)
+}
+
+export const config = _createConfig('${componentName}', ${JSON.stringify(configuration, null, 4)})
+`
+}
+
+async function getConfigFromServer(designId: string): Promise<ConfigNode> {
+    const action: GetNodeAction = { type: 'get-node', designId, config: true }
+    const response = fetch(actionRequest('design', action))
+    const { node, error } = await getResult<GetNodeResult>(response)
+
+    if (node) return node as ConfigNode
+    throw new CLIError('Failed to load Config', error.message)
 }
 
 async function getConfigFromFile(configPath: string): Promise<ConfigNode> {
@@ -97,18 +129,10 @@ async function saveConfigToFile(config: ConfigNode) {
     return checksum
 }
 
-async function deleteConfigFromServer(projectId: string, checksum: string): Promise<void> {
-    const response = await fetch(path.join(CONFIG_ENDPOINT, projectId), {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ checksum })
-    })
+async function deleteConfigFromServer(designId: string, configChecksum: string): Promise<void> {
+    const action: ResetNodeAction = { type: 'reset-node', designId, configChecksum }
+    const response = fetch(actionRequest('design', action))
+    const { error } = await getResult<ResetNodeResult>(response)
 
-    if (response.status === 200) return
-    if (response.status === 400) {
-        throw new CLIError('Failed to clear Config', (await response.json()).error)
-    }
-    throw new Error(response.statusText)
+    if (error) throw new CLIError('Failed to reset Config', error.message)
 }

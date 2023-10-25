@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import yargs from 'yargs/yargs'
-import css from './css'
 import { CLIError } from './error'
 import style from './style'
 import theme from './theme'
@@ -14,12 +13,17 @@ yargs(process.argv.slice(2))
         type: 'string',
         description: 'SplitFlow project ID'
     })
-    .command(
-        'css',
-        'Generate the CSS file for your project',
-        () => {},
-        (argv) => css(argv.projectId as any)
-    )
+    .option('appId', {
+        alias: 'a',
+        type: 'string',
+        description: 'SplitFlow application ID'
+    })
+    .option('framework', {
+        alias: 'f',
+        type: 'string',
+        description: 'Targeted web Framework',
+        choices: ['svelte']
+    })
     .command(
         'style [style]',
         'Generate SplitFlow style definitions',
@@ -35,9 +39,9 @@ yargs(process.argv.slice(2))
                     description: 'Clear style definitions from server'
                 })
                 .check((argv) => {
-                    if (!argv.ast && !argv.projectId) {
+                    if (!argv.ast && !argv.appId) {
                         throw new Error(
-                            'If no style file path is specified, the projectId option must be set'
+                            'If no style file path is specified, the appId option must be set'
                         )
                     }
                     return true
@@ -83,9 +87,9 @@ yargs(process.argv.slice(2))
                     description: 'Clear configuration definitions from server'
                 })
                 .check((argv) => {
-                    if (!argv.configuration && !argv.projectId) {
+                    if (!argv.configuration && !argv.appId) {
                         throw new Error(
-                            'If no configuration file path is specified, the projectId option must be set'
+                            'If no configuration file path is specified, the appId option must be set'
                         )
                     }
                     return true
