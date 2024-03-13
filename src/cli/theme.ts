@@ -1,11 +1,5 @@
 import { merge } from '@splitflow/core/utils'
-import { actionRequest, getResult } from '@splitflow/lib'
-import {
-    GetNodeAction,
-    GetNodeResult,
-    ResetNodeAction,
-    ResetNodeResult
-} from '@splitflow/lib/design'
+import { actionRequestX, getResult } from '@splitflow/lib'
 import { ThemeNode, ThemeDataNode } from '@splitflow/lib/style'
 import { readFile, writeFile } from 'fs/promises'
 import crypto from 'crypto'
@@ -13,21 +7,32 @@ import path from 'path'
 import { FileScanner } from './utils/files'
 import { format } from './utils/json'
 import { CLIError } from './error'
+import {
+    GetThemeAction,
+    GetThemeEndpoint,
+    GetThemeResult,
+    ResetThemeAction,
+    ResetThemeEndpoint,
+    ResetThemeResult
+} from '@splitflow/lib/design'
+import { CliKit, createCliKit } from './cli'
 
 const FILE_SCANNER = new FileScanner({
     filter: (fileName) => fileName.match(/^([^\.]*)\.sft\.(ts|js)$/)?.[1]
 })
 
 export interface ThemeOptions {
-    projectId?: string
+    accountId?: string
     framework?: string
     theme?: string
     clear?: boolean
 }
 
 export default async function theme(options: ThemeOptions) {
+    const kit = createCliKit(options)
+
     const [theme, mapping] = await Promise.all([
-        options.theme ? getThemeFromFile(options.theme) : getThemeFromServer(options.projectId!),
+        options.theme ? getThemeFromFile(options.theme) : getThemeFromServer(kit),
         FILE_SCANNER.scan()
     ])
 
@@ -50,7 +55,7 @@ export default async function theme(options: ThemeOptions) {
     )
 
     if (options.clear && !options.theme) {
-        await deleteThemeFromServer(options.projectId!, await saveThemeToFile(theme))
+        await deleteThemeFromServer(kit, await saveThemeToFile(theme))
     }
 }
 
@@ -103,12 +108,14 @@ export const theme = _createTheme('${themeName}', ${JSON.stringify(themeData, nu
 `
 }
 
-async function getThemeFromServer(projectId: string): Promise<ThemeNode> {
-    const action: GetNodeAction = { type: 'get-node', designId: projectId, theme: true }
-    const response = fetch(actionRequest('design', action))
-    const { node, error } = await getResult<GetNodeResult>(response)
+async function getThemeFromServer(kit: CliKit): Promise<ThemeNode> {
+    const { accountId } = kit.config
 
-    if (node) return node as ThemeNode
+    const action: GetThemeAction = { type: 'get-theme', accountId }
+    const response = kit.gateway.fetch(actionRequestX(action, GetThemeEndpoint))
+    const { theme, error } = await getResult<GetThemeResult>(response)
+
+    if (theme) return theme
     throw new CLIError('Failed to load Theme', error.message)
 }
 
@@ -125,10 +132,12 @@ async function saveThemeToFile(theme: ThemeNode) {
     return checksum
 }
 
-async function deleteThemeFromServer(designId: string, themeChecksum: string): Promise<void> {
-    const action: ResetNodeAction = { type: 'reset-node', designId, themeChecksum }
-    const response = fetch(actionRequest('design', action))
-    const { error } = await getResult<ResetNodeResult>(response)
+async function deleteThemeFromServer(kit: CliKit, themeChecksum: string): Promise<void> {
+    const { accountId } = kit.config
+
+    const action: ResetThemeAction = { type: 'reset-theme', accountId, themeChecksum }
+    const response = kit.gateway.fetch(actionRequestX(action, ResetThemeEndpoint))
+    const { error } = await getResult<ResetThemeResult>(response)
 
     if (error) throw new CLIError('Failed to reset Theme', error.message)
 }

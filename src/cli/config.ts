@@ -1,24 +1,28 @@
 import { merge } from '@splitflow/core/utils'
-import { actionRequest, getResult } from '@splitflow/lib'
+import { actionRequestX, getResult } from '@splitflow/lib'
 import { ConfigNode, ConfigurationNode, configToDef } from '@splitflow/lib/config'
-import {
-    GetNodeAction,
-    GetNodeResult,
-    ResetNodeAction,
-    ResetNodeResult
-} from '@splitflow/lib/design'
 import { readFile, writeFile } from 'fs/promises'
 import crypto from 'crypto'
 import path from 'path'
 import { FileScanner } from './utils/files'
 import { format } from './utils/json'
 import { CLIError } from './error'
+import {
+    GetDesignAction,
+    GetDesignEndpoint,
+    GetDesignResult,
+    ResetDesignAction,
+    ResetDesignEndpoint,
+    ResetDesignResult
+} from '@splitflow/lib/design'
+import { CliKit, createCliKit } from './cli'
 
 const FILE_SCANNER = new FileScanner({
     filter: (fileName) => fileName.match(/^([^\.]*)\.sfc\.(ts|js)$/)?.[1]
 })
 
 export interface ConfigOptions {
+    accountId?: string
     appId?: string
     framework?: string
     configuration?: string
@@ -26,10 +30,10 @@ export interface ConfigOptions {
 }
 
 export default async function config(options: ConfigOptions) {
+    const kit = createCliKit(options)
+
     const [config, mapping] = await Promise.all([
-        options.configuration
-            ? getConfigFromFile(options.configuration)
-            : getConfigFromServer(options.appId!),
+        options.configuration ? getConfigFromFile(options.configuration) : getConfigFromServer(kit),
         FILE_SCANNER.scan()
     ])
 
@@ -52,7 +56,7 @@ export default async function config(options: ConfigOptions) {
     )
 
     if (options.clear && !options.configuration) {
-        await deleteConfigFromServer(options.appId!, await saveConfigToFile(config))
+        await deleteConfigFromServer(kit, await saveConfigToFile(config))
     }
 }
 
@@ -107,12 +111,20 @@ export const config = _createConfig('${componentName}', ${JSON.stringify(configu
 `
 }
 
-async function getConfigFromServer(designId: string): Promise<ConfigNode> {
-    const action: GetNodeAction = { type: 'get-node', designId, config: true }
-    const response = fetch(actionRequest('design', action))
-    const { node, error } = await getResult<GetNodeResult>(response)
+async function getConfigFromServer(kit: CliKit): Promise<ConfigNode> {
+    const { accountId, appId: podId } = kit.config
 
-    if (node) return node as ConfigNode
+    const action: GetDesignAction = {
+        type: 'get-design',
+        accountId,
+        podId,
+        podType: 'app',
+        config: true
+    }
+    const response = kit.gateway.fetch(actionRequestX(action, GetDesignEndpoint))
+    const { config, error } = await getResult<GetDesignResult>(response)
+
+    if (config) return config
     throw new CLIError('Failed to load Config', error.message)
 }
 
@@ -129,10 +141,18 @@ async function saveConfigToFile(config: ConfigNode) {
     return checksum
 }
 
-async function deleteConfigFromServer(designId: string, configChecksum: string): Promise<void> {
-    const action: ResetNodeAction = { type: 'reset-node', designId, configChecksum }
-    const response = fetch(actionRequest('design', action))
-    const { error } = await getResult<ResetNodeResult>(response)
+async function deleteConfigFromServer(kit: CliKit, configChecksum: string): Promise<void> {
+    const { accountId, appId: podId } = kit.config
+
+    const action: ResetDesignAction = {
+        type: 'reset-design',
+        accountId,
+        podId,
+        podType: 'app',
+        configChecksum
+    }
+    const response = kit.gateway.fetch(actionRequestX(action, ResetDesignEndpoint))
+    const { error } = await getResult<ResetDesignResult>(response)
 
     if (error) throw new CLIError('Failed to reset Config', error.message)
 }

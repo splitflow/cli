@@ -12,12 +12,12 @@
     "url": "https://github.com/splitflow/cli.git"
   },
   "type": "module",
-  "bin": "dist/index.cjs",
+  "bin": "dist/index.js",
   "files": [
-    "dist/**.cjs"
+    "dist/**.js"
   ],
   "scripts": {
-    "build": "tsup src/cli/index.ts",
+    "build": "tsup",
     "test": "vitest"
   },
   "devDependencies": {
@@ -28,8 +28,10 @@
     "vitest": "^0.29.7"
   },
   "dependencies": {
+    "@splitflow/app": "file:../app",
     "@splitflow/core": "^2.1.0",
-    "@splitflow/lib": "^1.1.0",
+    "@splitflow/lib": "file:../lib",
+    "open": "^10.1.0",
     "yargs": "^17.6.2"
   }
 }
