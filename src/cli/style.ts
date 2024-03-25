@@ -1,10 +1,4 @@
-import { actionRequest, getResult } from '@splitflow/lib'
-import {
-    GetNodeAction,
-    GetNodeResult,
-    ResetNodeAction,
-    ResetNodeResult
-} from '@splitflow/lib/design'
+import { actionRequestX, getResult } from '@splitflow/lib'
 import { StyleNode, SplitflowStyleDef, styleToDef } from '@splitflow/lib/style'
 import { merge } from '@splitflow/core/utils'
 import { readFile, writeFile } from 'fs/promises'
@@ -13,27 +7,39 @@ import path from 'path'
 import { FileScanner } from './utils/files'
 import { format } from './utils/json'
 import { CLIError } from './error'
+import {
+    GetDesignAction,
+    GetDesignEndpoint,
+    GetDesignResult,
+    ResetDesignAction,
+    ResetDesignEndpoint,
+    ResetDesignResult
+} from '@splitflow/lib/design'
+import { CliKit, createCliKit } from './cli'
 
 const FILE_SCANNER = new FileScanner({
     filter: (fileName) => fileName.match(/^([^\.]*)\.sf\.(ts|js)$/)?.[1]
 })
 
 export interface StyleOptions {
+    accountId?: string
     appId?: string
     framework?: string
-    ast?: string
+    style?: string
     clear?: boolean
 }
 
 export default async function style(options: StyleOptions) {
-    const [ast, mapping] = await Promise.all([
-        options.ast ? getASTFromFile(options.ast) : getASTFromServer(options.appId!),
+    const kit = createCliKit(options)
+
+    const [style, mapping] = await Promise.all([
+        options.style ? getStyleFromFile(options.style) : getStyleFromServer(kit),
         FILE_SCANNER.scan()
     ])
 
     await Promise.all(
         (function* () {
-            for (const [componentName, styleDef] of styleToDef(ast)) {
+            for (const [componentName, styleDef] of styleToDef(style)) {
                 const filePath = mapping.get(componentName)
                 if (filePath) {
                     yield mergeSFFile(
@@ -49,8 +55,8 @@ export default async function style(options: StyleOptions) {
         })()
     )
 
-    if (options.clear && !options.ast) {
-        await deleteASTFromServer(options.appId!, await saveASTToFile(ast))
+    if (options.clear && !options.style) {
+        await deleteStyleFromServer(kit, await saveStyleToFile(style))
     }
 }
 
@@ -103,32 +109,48 @@ export const style = _createStyle('${componentName}', ${JSON.stringify(styleDef,
 `
 }
 
-async function getASTFromServer(designId: string): Promise<StyleNode> {
-    const action: GetNodeAction = { type: 'get-node', designId, style: true }
-    const response = fetch(actionRequest('design', action))
-    const { node, error } = await getResult<GetNodeResult>(response)
+async function getStyleFromServer(kit: CliKit): Promise<StyleNode> {
+    const { accountId, appId: podId } = kit.config
 
-    if (node) return node as StyleNode
-    throw new CLIError('Failed to load AST', error.message)
+    const action: GetDesignAction = {
+        type: 'get-design',
+        accountId,
+        podId,
+        podType: 'apps',
+        style: true
+    }
+    const response = kit.gateway.fetch(actionRequestX(action, GetDesignEndpoint))
+    const { style, error } = await getResult<GetDesignResult>(response)
+
+    if (style) return style
+    throw new CLIError('Failed to load Style', error.message)
 }
 
-async function getASTFromFile(astPath: string): Promise<StyleNode> {
-    const text = await readFile(path.join(process.cwd(), astPath), { encoding: 'utf8' })
+async function getStyleFromFile(stylePath: string): Promise<StyleNode> {
+    const text = await readFile(path.join(process.cwd(), stylePath), { encoding: 'utf8' })
     return JSON.parse(text)
 }
 
-async function saveASTToFile(ast: StyleNode): Promise<string> {
-    const data = JSON.stringify(ast)
+async function saveStyleToFile(style: StyleNode): Promise<string> {
+    const data = JSON.stringify({ style })
     const checksum = crypto.createHash('sha256').update(data).digest('hex')
 
-    await writeFile(path.join(process.cwd(), `ast-${new Date().toISOString()}.json`), data)
+    await writeFile(path.join(process.cwd(), `style-${new Date().toISOString()}.json`), data)
     return checksum
 }
 
-async function deleteASTFromServer(designId: string, styleChecksum: string): Promise<void> {
-    const action: ResetNodeAction = { type: 'reset-node', designId, styleChecksum }
-    const response = fetch(actionRequest('design', action))
-    const { error } = await getResult<ResetNodeResult>(response)
+async function deleteStyleFromServer(kit: CliKit, styleChecksum: string): Promise<void> {
+    const { accountId, appId: podId } = kit.config
 
-    if (error) throw new CLIError('Failed to reset AST', error.message)
+    const action: ResetDesignAction = {
+        type: 'reset-design',
+        accountId,
+        podId,
+        podType: 'apps',
+        styleChecksum
+    }
+    const response = kit.gateway.fetch(actionRequestX(action, ResetDesignEndpoint))
+    const { error } = await getResult<ResetDesignResult>(response)
+
+    if (error) throw new CLIError('Failed to reset Style', error.message)
 }

@@ -4,14 +4,15 @@ import { CLIError } from './error'
 import style from './style'
 import theme from './theme'
 import config from './config'
+import signIn from './sign-in'
 
 yargs(process.argv.slice(2))
     .config('config')
     .default('config', 'splitflow.config.json')
-    .option('projectId', {
-        alias: 'p',
+    .option('accountId', {
+        alias: 'ac',
         type: 'string',
-        description: 'SplitFlow project ID'
+        description: 'SplitFlow account ID'
     })
     .option('appId', {
         alias: 'a',
@@ -29,7 +30,7 @@ yargs(process.argv.slice(2))
         'Generate SplitFlow style definitions',
         (yargs) =>
             yargs
-                .positional('ast', {
+                .positional('style', {
                     type: 'string',
                     describe: 'Path to style definitions file'
                 })
@@ -39,9 +40,9 @@ yargs(process.argv.slice(2))
                     description: 'Clear style definitions from server'
                 })
                 .check((argv) => {
-                    if (!argv.ast && !argv.appId) {
+                    if (!argv.style && (!argv.appId || !argv.accountId)) {
                         throw new Error(
-                            'If no style file path is specified, the appId option must be set'
+                            'If no style file path is specified, the accountId and appId options must be set'
                         )
                     }
                     return true
@@ -63,9 +64,9 @@ yargs(process.argv.slice(2))
                     description: 'Clear theme data from server'
                 })
                 .check((argv) => {
-                    if (!argv.theme && !argv.projectId) {
+                    if (!argv.theme && !argv.accountId) {
                         throw new Error(
-                            'If no theme file path is specified, the projectId option must be set'
+                            'If no theme file path is specified, the accountId option must be set'
                         )
                     }
                     return true
@@ -87,14 +88,26 @@ yargs(process.argv.slice(2))
                     description: 'Clear configuration definitions from server'
                 })
                 .check((argv) => {
-                    if (!argv.configuration && !argv.appId) {
+                    if (!argv.configuration && (!argv.appId || !argv.accountId)) {
                         throw new Error(
-                            'If no configuration file path is specified, the appId option must be set'
+                            'If no configuration file path is specified, the accountId and appId options must be set'
                         )
                     }
                     return true
                 }),
         (argv) => config(argv)
+    )
+    .command(
+        'login',
+        'Login to SplitFlow',
+        (yargs) =>
+            yargs.check((argv) => {
+                if (!argv.accountId) {
+                    throw new Error('The accountId option must be set')
+                }
+                return true
+            }),
+        (argv) => signIn(argv)
     )
     .fail((_, error, yargs) => {
         console.error(yargs.help())
