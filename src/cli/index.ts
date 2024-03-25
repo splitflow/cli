@@ -30,7 +30,7 @@ yargs(process.argv.slice(2))
         'Generate SplitFlow style definitions',
         (yargs) =>
             yargs
-                .positional('ast', {
+                .positional('style', {
                     type: 'string',
                     describe: 'Path to style definitions file'
                 })
@@ -40,7 +40,7 @@ yargs(process.argv.slice(2))
                     description: 'Clear style definitions from server'
                 })
                 .check((argv) => {
-                    if (!argv.ast && (!argv.appId || !argv.accountId)) {
+                    if (!argv.style && (!argv.appId || !argv.accountId)) {
                         throw new Error(
                             'If no style file path is specified, the accountId and appId options must be set'
                         )

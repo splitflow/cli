@@ -25,21 +25,21 @@ export interface StyleOptions {
     accountId?: string
     appId?: string
     framework?: string
-    ast?: string
+    style?: string
     clear?: boolean
 }
 
 export default async function style(options: StyleOptions) {
     const kit = createCliKit(options)
 
-    const [ast, mapping] = await Promise.all([
-        options.ast ? getASTFromFile(options.ast) : getASTFromServer(kit),
+    const [style, mapping] = await Promise.all([
+        options.style ? getStyleFromFile(options.style) : getStyleFromServer(kit),
         FILE_SCANNER.scan()
     ])
 
     await Promise.all(
         (function* () {
-            for (const [componentName, styleDef] of styleToDef(ast)) {
+            for (const [componentName, styleDef] of styleToDef(style)) {
                 const filePath = mapping.get(componentName)
                 if (filePath) {
                     yield mergeSFFile(
@@ -55,8 +55,8 @@ export default async function style(options: StyleOptions) {
         })()
     )
 
-    if (options.clear && !options.ast) {
-        await deleteASTFromServer(kit, await saveASTToFile(ast))
+    if (options.clear && !options.style) {
+        await deleteStyleFromServer(kit, await saveStyleToFile(style))
     }
 }
 
@@ -109,48 +109,48 @@ export const style = _createStyle('${componentName}', ${JSON.stringify(styleDef,
 `
 }
 
-async function getASTFromServer(kit: CliKit): Promise<StyleNode> {
+async function getStyleFromServer(kit: CliKit): Promise<StyleNode> {
     const { accountId, appId: podId } = kit.config
 
     const action: GetDesignAction = {
         type: 'get-design',
         accountId,
         podId,
-        podType: 'app',
+        podType: 'apps',
         style: true
     }
     const response = kit.gateway.fetch(actionRequestX(action, GetDesignEndpoint))
     const { style, error } = await getResult<GetDesignResult>(response)
 
     if (style) return style
-    throw new CLIError('Failed to load AST', error.message)
+    throw new CLIError('Failed to load Style', error.message)
 }
 
-async function getASTFromFile(astPath: string): Promise<StyleNode> {
-    const text = await readFile(path.join(process.cwd(), astPath), { encoding: 'utf8' })
+async function getStyleFromFile(stylePath: string): Promise<StyleNode> {
+    const text = await readFile(path.join(process.cwd(), stylePath), { encoding: 'utf8' })
     return JSON.parse(text)
 }
 
-async function saveASTToFile(ast: StyleNode): Promise<string> {
-    const data = JSON.stringify(ast)
+async function saveStyleToFile(style: StyleNode): Promise<string> {
+    const data = JSON.stringify({ style })
     const checksum = crypto.createHash('sha256').update(data).digest('hex')
 
-    await writeFile(path.join(process.cwd(), `ast-${new Date().toISOString()}.json`), data)
+    await writeFile(path.join(process.cwd(), `style-${new Date().toISOString()}.json`), data)
     return checksum
 }
 
-async function deleteASTFromServer(kit: CliKit, styleChecksum: string): Promise<void> {
+async function deleteStyleFromServer(kit: CliKit, styleChecksum: string): Promise<void> {
     const { accountId, appId: podId } = kit.config
 
     const action: ResetDesignAction = {
         type: 'reset-design',
         accountId,
         podId,
-        podType: 'app',
+        podType: 'apps',
         styleChecksum
     }
     const response = kit.gateway.fetch(actionRequestX(action, ResetDesignEndpoint))
     const { error } = await getResult<ResetDesignResult>(response)
 
-    if (error) throw new CLIError('Failed to reset AST', error.message)
+    if (error) throw new CLIError('Failed to reset Style', error.message)
 }

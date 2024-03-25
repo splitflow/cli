@@ -118,7 +118,7 @@ async function getConfigFromServer(kit: CliKit): Promise<ConfigNode> {
         type: 'get-design',
         accountId,
         podId,
-        podType: 'app',
+        podType: 'apps',
         config: true
     }
     const response = kit.gateway.fetch(actionRequestX(action, GetDesignEndpoint))
@@ -134,7 +134,7 @@ async function getConfigFromFile(configPath: string): Promise<ConfigNode> {
 }
 
 async function saveConfigToFile(config: ConfigNode) {
-    const data = JSON.stringify(config)
+    const data = JSON.stringify({ config })
     const checksum = crypto.createHash('sha256').update(data).digest('hex')
 
     await writeFile(path.join(process.cwd(), `config-${new Date().toISOString()}.json`), data)
@@ -148,7 +148,7 @@ async function deleteConfigFromServer(kit: CliKit, configChecksum: string): Prom
         type: 'reset-design',
         accountId,
         podId,
-        podType: 'app',
+        podType: 'apps',
         configChecksum
     }
     const response = kit.gateway.fetch(actionRequestX(action, ResetDesignEndpoint))
