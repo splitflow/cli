@@ -83,6 +83,8 @@ function template(framework: string) {
     switch (framework) {
         case 'svelte':
             return sfSvelteFileTemplate
+        case 'react':
+            return sfReactFileTemplate
         default:
             return sfJavascriptFileTemplate
     }
@@ -103,6 +105,19 @@ import { createStyle as __createStyle } from '@splitflow/designer/svelte'
 
 export function createStyle() {
     return __createStyle(style)
+}
+
+export const style = _createStyle('${componentName}', ${JSON.stringify(styleDef, null, 4)})
+`
+}
+
+function sfReactFileTemplate(componentName: string, styleDef: SplitflowStyleDef) {
+    return `
+import { createStyle as _createStyle } from '@splitflow/designer'
+import { useStyle as _useStyle } from '@splitflow/designer/react'
+
+export function useStyle() {
+    return _useStyle(style)
 }
 
 export const style = _createStyle('${componentName}', ${JSON.stringify(styleDef, null, 4)})
