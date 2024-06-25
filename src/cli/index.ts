@@ -23,7 +23,7 @@ yargs(process.argv.slice(2))
         alias: 'f',
         type: 'string',
         description: 'Targeted web Framework',
-        choices: ['svelte']
+        choices: ['svelte', 'react']
     })
     .command(
         'style [style]',
@@ -114,7 +114,7 @@ yargs(process.argv.slice(2))
         console.error('')
         if (error instanceof CLIError) {
             console.error(`${error.snack}: ${error.message}`)
-        } else {
+        } else if (error) {
             console.error(error.stack)
         }
         process.exit(1)

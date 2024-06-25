@@ -82,6 +82,8 @@ function template(framework: string) {
     switch (framework) {
         case 'svelte':
             return sfSvelteThemeFileTemplate
+        case 'react':
+            return sfReactThemeFileTemplate
         default:
             return sfJavascriptThemeFileTemplate
     }
@@ -102,6 +104,19 @@ import { createTheme as __createTheme } from '@splitflow/designer/svelte'
 
 export function createTheme() {
     return __createTheme(theme)
+}
+
+export const theme = _createTheme('${themeName}', ${JSON.stringify(themeData, null, 4)})
+`
+}
+
+function sfReactThemeFileTemplate(themeName: string, themeData: ThemeDataNode) {
+    return `
+import { createTheme as _createTheme } from '@splitflow/designer'
+import { useTheme as _useTheme } from '@splitflow/designer/react'
+
+export function useTheme() {
+    return _useTheme(theme)
 }
 
 export const theme = _createTheme('${themeName}', ${JSON.stringify(themeData, null, 4)})
